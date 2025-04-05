@@ -4,6 +4,12 @@
 
 # Search NixOS API
 
+<p>
+    <a href="https://github.com/anotherhadi/search-nixos-api/releases"><img src="https://img.shields.io/github/release/anotherhadi/search-nixos-api.svg" alt="Latest Release"></a>
+    <a href="https://pkg.go.dev/github.com/anotherhadi/search-nixos-api?tab=doc"><img src="https://godoc.org/github.com/anotherhadi/search-nixos-api?status.svg" alt="GoDoc"></a>
+    <a href="https://goreportcard.com/report/github.com/anotherhadi/search-nixos-api"><img src="https://goreportcard.com/badge/github.com/anotherhadi/search-nixos-api" alt="GoReportCard"></a>
+</p>
+
 The Search NixOS API is a service designed to facilitate the search and retrieval of options across various Nix-related projects, including Nixpkgs, NixOS, Home Manager, nix-darwin, and the Nix User Repository (NUR). This API provides developers and users with a unified interface to query and explore configuration options available within these ecosystems.
 
 This API is used in the [Search NixOS](https://github.com/anotherhadi/search-nixos) project, which is a web application that allows users to search for NixOS options and view their documentation. The API serves as the backend for this application, providing the necessary data and functionality to support the search feature.
