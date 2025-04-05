@@ -9,6 +9,7 @@ import (
 	"github.com/anotherhadi/search-nixos-api/indexer/homemanager"
 	"github.com/anotherhadi/search-nixos-api/indexer/nixos"
 	"github.com/anotherhadi/search-nixos-api/indexer/nixpkgs"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
@@ -57,6 +58,13 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	r := gin.Default()
+
+	// Enable CORS for all origins, methods, and headers
+	r.Use(cors.New(cors.Config{
+		AllowOrigins: []string{"*"},
+		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders: []string{"Origin", "Content-Length", "Content-Type"},
+	}))
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{"message": "Welcome to the Search NixOS API"})
