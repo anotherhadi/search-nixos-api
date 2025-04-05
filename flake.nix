@@ -10,8 +10,7 @@
         pname = "search-nixos-api";
         version = "0.1.0";
         src = ./.;
-        vendorHash =
-          "sha256-ykrd2LIyEhqg0KRkFuSbc7kQOiBnRE6aKxTrQG2qzo0="; # `nix build .#search-nixos-api`
+        vendorHash = "sha256-9uhKuh7kI7tXj0Gq4J9Gs9ZA1lttjQPVEGBApiVMjog="; # `nix build .#search-nixos-api`
       };
 
       nixosModules.search-nixos-api = { config, lib, pkgs, ... }: {
