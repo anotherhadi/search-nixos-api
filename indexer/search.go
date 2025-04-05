@@ -6,9 +6,11 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/anotherhadi/search-nixos-api/indexer/darwin"
 	"github.com/anotherhadi/search-nixos-api/indexer/homemanager"
 	"github.com/anotherhadi/search-nixos-api/indexer/nixos"
 	"github.com/anotherhadi/search-nixos-api/indexer/nixpkgs"
+	"github.com/anotherhadi/search-nixos-api/indexer/nur"
 )
 
 func DeleteNonMatchingItems(keys Keys, pattern string, onName ...bool) Keys {
@@ -53,10 +55,10 @@ func (keys Keys) Search(
 
 	if strings.HasPrefix(query, "package ") {
 		query = strings.TrimPrefix(query, "package ")
-		exclude = []string{"nixos", "homemanager"}
+		exclude = []string{"nixos", "homemanager", "darwin"}
 	} else if strings.HasPrefix(query, "option ") {
 		query = strings.TrimPrefix(query, "option ")
-		exclude = []string{"nixpkgs"}
+		exclude = []string{"nixpkgs", "nur"}
 	}
 
 	results = slices.Clone(keys)
@@ -70,6 +72,12 @@ func (keys Keys) Search(
 	}
 	if !Contains(exclude, "homemanager") {
 		patterns = append(patterns, `^`+homemanager.Prefix+`.*`)
+	}
+	if !Contains(exclude, "darwin") {
+		patterns = append(patterns, `^`+darwin.Prefix+`.*`)
+	}
+	if !Contains(exclude, "nur") {
+		patterns = append(patterns, `^`+nur.Prefix+`.*`)
 	}
 	if len(patterns) > 0 {
 		pattern := strings.Join(patterns, "|")
