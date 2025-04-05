@@ -18,10 +18,6 @@ type Package struct {
 	Version string `json:"version"`
 }
 
-func (p Package) GetName() string {
-	return "nixpkgs"
-}
-
 type Meta struct {
 	Description     string               `json:"description"`
 	LongDescription string               `json:"longDescription"`

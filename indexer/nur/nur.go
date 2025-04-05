@@ -7,7 +7,7 @@ import (
 	"strconv"
 )
 
-const Prefix = "nur/option/"
+const Prefix = "nur/package/"
 
 type Nur struct {
 	Version  int                `json:"version"`
@@ -17,10 +17,6 @@ type Nur struct {
 type Package struct {
 	Meta    Meta   `json:"meta"`
 	Version string `json:"version"`
-}
-
-func (p Package) GetName() string {
-	return "nixpkgs"
 }
 
 type Meta struct {
