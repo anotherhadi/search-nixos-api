@@ -119,18 +119,19 @@ func main() {
 		} else {
 			results := index.Keys.Search(query, exclude)
 			if len(results) == 0 {
-				c.JSON(200, indexer.Keys{})
+				c.JSON(200, gin.H{"results": indexer.Keys{}, "total": 0, "page": pageInt, "per_page": perPageInt, "totalPages": 1})
 				return
 			}
-			if len(results) > perPageInt {
+			total := len(results)
+			totalPages := (total + perPageInt - 1) / perPageInt
+			if total > perPageInt {
 				start := (pageInt - 1) * perPageInt
 				end := start + perPageInt
-				if end > len(results) {
-					end = len(results)
-				}
+				end = min(end, total)
+
 				results = results[start:end]
 			}
-			c.JSON(200, results)
+			c.JSON(200, gin.H{"results": results, "total": total, "totalPages": totalPages, "page": pageInt, "per_page": perPageInt})
 		}
 	})
 
