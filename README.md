@@ -1,3 +1,7 @@
+<div align="center">
+    <img src="https://raw.githubusercontent.com/anotherhadi/search-nixos/main/static/logo.png" width="120px" />
+</div>
+
 # Search NixOS API
 
 The Search NixOS API is a service designed to facilitate the search and retrieval of options across various Nix-related projects, including Nixpkgs, NixOS, Home Manager, nix-darwin, and the Nix User Repository (NUR). This API provides developers and users with a unified interface to query and explore configuration options available within these ecosystems.
