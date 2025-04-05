@@ -124,6 +124,11 @@ func main() {
 			}
 			total := len(results)
 			totalPages := (total + perPageInt - 1) / perPageInt
+			if pageInt > totalPages {
+				c.JSON(400, gin.H{"error": "Page number exceeds total pages"})
+				return
+			}
+
 			if total > perPageInt {
 				start := (pageInt - 1) * perPageInt
 				end := start + perPageInt
