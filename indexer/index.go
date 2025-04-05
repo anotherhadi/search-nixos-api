@@ -6,6 +6,7 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/anotherhadi/search-nixos-api/indexer/darwin"
 	"github.com/anotherhadi/search-nixos-api/indexer/homemanager"
@@ -81,9 +82,23 @@ func DownloadReleases(path string) {
 	}
 	index.Nur = nurJson.Packages
 
+	log.Println("Downloading info")
+	rc, err := downloadRelease("version")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	defer rc.Close()
+	content, err := io.ReadAll(rc)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
 	log.Println("Writing index.json...")
 	index.Info = map[string]string{
-		// TODO: Add "version" to the index, "last-updated"
+		"version":        string(content),
+		"last-updated":   time.Now().Format(time.RFC3339),
 		"nixos-length":   strconv.Itoa(len(index.Nixos)),
 		"nixpkgs-length": strconv.Itoa(len(index.Nixpkgs)),
 		"hm-length":      strconv.Itoa(len(index.Homemanager)),
@@ -138,7 +153,7 @@ func DownloadReleases(path string) {
 		return
 	}
 	defer indexFile.Close()
-	content, err := json.MarshalIndent(index, "", "  ")
+	content, err = json.MarshalIndent(index, "", "  ")
 	if err != nil {
 		log.Println(err)
 		return
@@ -149,6 +164,7 @@ func DownloadReleases(path string) {
 		return
 	}
 	log.Println("Index downloaded and saved to", path)
+	log.Println("Version:", index.Info["version"])
 	log.Println("Index file size:", len(content), "bytes")
 	log.Println("Nixpkgs version:", index.Info["version"])
 	log.Println("Nixpkgs length:", len(nixpkgsJson.Packages))

@@ -59,7 +59,6 @@ func main() {
 	}
 	r := gin.Default()
 
-	// Enable CORS for all origins, methods, and headers
 	r.Use(cors.New(cors.Config{
 		AllowOrigins: []string{"*"},
 		AllowMethods: []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},

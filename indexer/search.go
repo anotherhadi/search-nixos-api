@@ -13,35 +13,20 @@ import (
 	"github.com/anotherhadi/search-nixos-api/indexer/nur"
 )
 
-func DeleteNonMatchingItems(keys Keys, pattern string, onName ...bool) Keys {
+func DeleteNonMatchingItems(keys Keys, pattern string) Keys {
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		fmt.Println("Err: ", err)
 		return keys
 	}
 
-	if len(onName) > 0 && onName[0] {
-		var filtered Keys
-		for _, k := range keys {
-			if re.MatchString(k.Name) {
-				filtered = append(filtered, k)
-			}
+	var filtered Keys
+	for _, k := range keys {
+		if re.MatchString(k.Name) {
+			filtered = append(filtered, k)
 		}
-		return filtered
-	} else {
-		var filtered Keys
-		for _, k := range keys {
-			if re.MatchString(k.Key) {
-				filtered = append(filtered, k)
-			}
-		}
-		return filtered
 	}
-}
-
-// TODO: Remove this function
-func Contains(list []string, item string) bool {
-	return slices.Contains(list, item)
+	return filtered
 }
 
 func (keys Keys) Search(
@@ -53,35 +38,27 @@ func (keys Keys) Search(
 		return keys
 	}
 
-	if strings.HasPrefix(query, "package ") {
-		query = strings.TrimPrefix(query, "package ")
-		exclude = []string{"nixos", "homemanager", "darwin"}
-	} else if strings.HasPrefix(query, "option ") {
-		query = strings.TrimPrefix(query, "option ")
-		exclude = []string{"nixpkgs", "nur"}
-	}
-
 	results = slices.Clone(keys)
 
 	var patterns []string
-	if !Contains(exclude, "nixpkgs") {
+	if !slices.Contains(exclude, "nixpkgs") {
 		patterns = append(patterns, `^`+nixpkgs.Prefix+`.*`)
 	}
-	if !Contains(exclude, "nixos") {
+	if !slices.Contains(exclude, "nixos") {
 		patterns = append(patterns, `^`+nixos.Prefix+`.*`)
 	}
-	if !Contains(exclude, "homemanager") {
+	if !slices.Contains(exclude, "homemanager") {
 		patterns = append(patterns, `^`+homemanager.Prefix+`.*`)
 	}
-	if !Contains(exclude, "darwin") {
+	if !slices.Contains(exclude, "darwin") {
 		patterns = append(patterns, `^`+darwin.Prefix+`.*`)
 	}
-	if !Contains(exclude, "nur") {
+	if !slices.Contains(exclude, "nur") {
 		patterns = append(patterns, `^`+nur.Prefix+`.*`)
 	}
 	if len(patterns) > 0 {
 		pattern := strings.Join(patterns, "|")
-		results = DeleteNonMatchingItems(results, pattern, true)
+		results = DeleteNonMatchingItems(results, pattern)
 	} else {
 		return Keys{}
 	}
