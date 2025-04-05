@@ -6,9 +6,11 @@ import (
 	"time"
 
 	"github.com/anotherhadi/search-nixos-api/indexer"
+	"github.com/anotherhadi/search-nixos-api/indexer/darwin"
 	"github.com/anotherhadi/search-nixos-api/indexer/homemanager"
 	"github.com/anotherhadi/search-nixos-api/indexer/nixos"
 	"github.com/anotherhadi/search-nixos-api/indexer/nixpkgs"
+	"github.com/anotherhadi/search-nixos-api/indexer/nur"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
@@ -115,6 +117,24 @@ func main() {
 	r.GET(homemanager.Prefix+":q", func(c *gin.Context) {
 		query := c.Param("q")
 		if result, found := index.Homemanager[query]; found {
+			c.JSON(200, result)
+		} else {
+			c.JSON(404, gin.H{"error": "Not found"})
+		}
+	})
+
+	r.GET(darwin.Prefix+":q", func(c *gin.Context) {
+		query := c.Param("q")
+		if result, found := index.Darwin[query]; found {
+			c.JSON(200, result)
+		} else {
+			c.JSON(404, gin.H{"error": "Not found"})
+		}
+	})
+
+	r.GET(nur.Prefix+":q", func(c *gin.Context) {
+		query := c.Param("q")
+		if result, found := index.Nur[query]; found {
 			c.JSON(200, result)
 		} else {
 			c.JSON(404, gin.H{"error": "Not found"})
