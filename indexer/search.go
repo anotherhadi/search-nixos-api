@@ -13,7 +13,7 @@ import (
 	"github.com/anotherhadi/search-nixos-api/indexer/nur"
 )
 
-func DeleteNonMatchingItems(keys Keys, pattern string) Keys {
+func DeleteNonMatchingItems(keys Keys, pattern string, onlyOnKey bool) Keys {
 	re, err := regexp.Compile(pattern)
 	if err != nil {
 		fmt.Println("Err: ", err)
@@ -21,9 +21,17 @@ func DeleteNonMatchingItems(keys Keys, pattern string) Keys {
 	}
 
 	var filtered Keys
-	for _, k := range keys {
-		if re.MatchString(k.Name) {
-			filtered = append(filtered, k)
+	if onlyOnKey {
+		for _, k := range keys {
+			if re.MatchString(k.Key) {
+				filtered = append(filtered, k)
+			}
+		}
+	} else {
+		for _, k := range keys {
+			if re.MatchString(k.Name) {
+				filtered = append(filtered, k)
+			}
 		}
 	}
 	return filtered
@@ -58,25 +66,28 @@ func (keys Keys) Search(
 	}
 	if len(patterns) > 0 {
 		pattern := strings.Join(patterns, "|")
-		results = DeleteNonMatchingItems(results, pattern)
+		results = DeleteNonMatchingItems(results, pattern, false)
 	} else {
 		return Keys{}
 	}
 
 	for _, term := range strings.Fields(query) {
 		regex := `(?i)`
+		onlyOnKey := false
 		endWith := ``
 		if strings.HasPrefix(term, "^") {
 			term = strings.TrimPrefix(term, "^")
 			regex += "^"
+			onlyOnKey = true
 		}
 		if strings.HasSuffix(term, "$") {
 			term = strings.TrimSuffix(term, "$")
 			endWith = "$"
+			onlyOnKey = true
 		}
 		regex += regexp.QuoteMeta(term)
 		regex += endWith
-		results = DeleteNonMatchingItems(results, regex)
+		results = DeleteNonMatchingItems(results, regex, onlyOnKey)
 	}
 
 	slices.SortFunc(results, func(a, b Key) int {
