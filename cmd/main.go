@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -83,6 +84,31 @@ func main() {
 	// curl -X GET "http://localhost:8080/search?q=kitty&exclude=nixos,homemanager"
 	r.GET("/search", func(c *gin.Context) {
 		query := c.Query("q")
+		page := c.Query("page")
+		if page == "" {
+			page = "1"
+		}
+		pageInt, err := strconv.Atoi(page)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Invalid page number"})
+			return
+		} else if pageInt < 1 {
+			c.JSON(400, gin.H{"error": "Page number must be greater than 0"})
+			return
+		}
+		perPage := c.Query("per_page")
+		if perPage == "" {
+			perPage = "20"
+		}
+		perPageInt, err := strconv.Atoi(perPage)
+		if err != nil {
+			c.JSON(400, gin.H{"error": "Invalid per_page number"})
+			return
+		} else if perPageInt < 1 {
+			c.JSON(400, gin.H{"error": "per_page number must be greater than 0"})
+			return
+		}
+
 		excludeStr := c.Query("exclude")
 		exclude := []string{}
 		if excludeStr != "" {
@@ -92,6 +118,18 @@ func main() {
 			c.JSON(400, gin.H{"error": "Query parameter 'q' is required"})
 		} else {
 			results := index.Keys.Search(query, exclude)
+			if len(results) == 0 {
+				c.JSON(200, indexer.Keys{})
+				return
+			}
+			if len(results) > perPageInt {
+				start := (pageInt - 1) * perPageInt
+				end := start + perPageInt
+				if end > len(results) {
+					end = len(results)
+				}
+				results = results[start:end]
+			}
 			c.JSON(200, results)
 		}
 	})
