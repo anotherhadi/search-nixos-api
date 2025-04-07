@@ -167,7 +167,7 @@ func (index Index) Search(query string) []PackageOrOption {
 		results.Nur = Packages{}
 		fields = slices.Delete(fields, slices.Index(fields, "!nur"), slices.Index(fields, "!nur")+1)
 	}
-	if slices.Contains(fields, "!homemanager") {
+	if slices.Contains(fields, "!home-manager") {
 		results.Homemanager = Options{}
 		fields = slices.Delete(
 			fields,
