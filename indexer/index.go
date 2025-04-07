@@ -5,7 +5,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"slices"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/anotherhadi/search-nixos-api/indexer/darwin"
@@ -15,74 +17,246 @@ import (
 	"github.com/anotherhadi/search-nixos-api/indexer/nur"
 )
 
-type Key struct {
-	Key         string `json:"key"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
+func simplifyPlatform(pkgs Package) Package {
+	pkgs.PlatformsSimplify = []string{}
+	platforms := []string{"darwin", "linux", "windows", "freebsd", "cygwin"}
+	for _, p := range pkgs.Platforms {
+		for _, platform := range platforms {
+			if strings.Contains(p, platform) {
+				if slices.Contains(pkgs.PlatformsSimplify, platform) {
+					continue
+				}
+				pkgs.PlatformsSimplify = append(pkgs.PlatformsSimplify, platform)
+				break
+			}
+		}
+	}
+	return pkgs
 }
 
-type Keys []Key
-
-func (k Keys) Len() int {
-	return len(k)
+func dlNixos() Options {
+	file := "nixos.json"
+	log.Println("Downloading " + file + "...")
+	jsonObject := map[string]nixos.Package{}
+	err := downloadAndReadRelease(file, &jsonObject)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("Downloaded " + file + " successfully")
+	log.Println("Parsing " + file + "...")
+	options := Options{}
+	for k, v := range jsonObject {
+		opt := Option{
+			Source:       "nixpkgs",
+			Type:         v.Type,
+			Description:  v.Description,
+			Declarations: v.Declarations,
+			Default:      v.Default.Text,
+			Example:      v.Example.Text,
+		}
+		options[k] = opt
+	}
+	log.Println("Parsed " + file + " successfully")
+	return options
 }
 
-func (k Keys) String(i int) string {
-	return k[i].Name
+func dlHomemanager() Options {
+	file := "home-manager.json"
+	log.Println("Downloading " + file + "...")
+	jsonObject := map[string]homemanager.Package{}
+	err := downloadAndReadRelease(file, &jsonObject)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("Downloaded " + file + " successfully")
+	log.Println("Parsing " + file + "...")
+	options := Options{}
+	for k, v := range jsonObject {
+		opt := Option{
+			Source:       "home-manager",
+			Type:         v.Type,
+			Description:  v.Description,
+			Declarations: []string{},
+			Default:      v.Default.Text,
+			Example:      v.Example.Text,
+		}
+		for _, d := range v.Declarations {
+			opt.Declarations = append(opt.Declarations, d.URL)
+		}
+		options[k] = opt
+	}
+	log.Println("Parsed " + file + " successfully")
+	return options
 }
 
-type Index struct {
-	Info map[string]string `json:"info"`
-	Keys Keys              `json:"keys"`
+func dlDarwin() Options {
+	file := "darwin.json"
+	log.Println("Downloading " + file + "...")
+	jsonObject := darwin.Darwin{}
+	err := downloadAndReadRelease(file, &jsonObject)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("Downloaded " + file + " successfully")
+	log.Println("Parsing " + file + "...")
+	options := Options{}
+	for k, v := range jsonObject.Packages {
+		opt := Option{
+			Source:       "darwin",
+			Type:         v.Type,
+			Description:  v.Description,
+			Declarations: v.DeclaredBy,
+			Default:      v.Default,
+			Example:      v.Example,
+		}
+		options[k] = opt
+	}
+	log.Println("Parsed " + file + " successfully")
+	return options
+}
 
-	Nixos       map[string]nixos.Package       `json:"nixos"`
-	Nixpkgs     map[string]nixpkgs.Package     `json:"nixpkgs"`
-	Homemanager map[string]homemanager.Package `json:"homemanager"`
-	Darwin      map[string]darwin.Package      `json:"darwin"`
-	Nur         map[string]nur.Package         `json:"nur"`
+func dlNixpkgs() Packages {
+	file := "nixpkgs.json"
+	log.Println("Downloading " + file + "...")
+	jsonObject := nixpkgs.Nixpkgs{}
+	err := downloadAndReadRelease(file, &jsonObject)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("Downloaded " + file + " successfully")
+	log.Println("Parsing " + file + "...")
+	packages := Packages{}
+	for k, v := range jsonObject.Packages {
+		pkg := Package{
+			Source:          "nixpkgs",
+			Name:            v.Meta.Name,
+			Version:         v.Version,
+			Description:     v.Meta.Description,
+			LongDescription: v.Meta.LongDescription,
+			MainProgram:     v.Meta.MainProgram,
+			Licenses:        []License{},
+			Maintainers:     []Maintainer{},
+			Broken:          v.Meta.Broken,
+			Unfree:          v.Meta.Unfree,
+			Position:        v.Meta.Position,
+			PositionUrl:     v.Meta.Position,
+		}
+
+		pkg.PositionUrl = "https://github.com/NixOS/nixpkgs/blob/nixos-unstable/" + strings.Replace(
+			v.Meta.Position,
+			":",
+			"#L",
+			1,
+		)
+		if v.Meta.KnownVulnerabilities != nil {
+			pkg.KnownVulnerabilities = v.Meta.KnownVulnerabilities
+		} else {
+			pkg.KnownVulnerabilities = []string{}
+		}
+		if v.Meta.Homepages != nil {
+			pkg.Homepages = v.Meta.Homepages
+		} else {
+			pkg.Homepages = []string{}
+		}
+		if v.Meta.Platforms != nil {
+			pkg.Platforms = v.Meta.Platforms
+		} else {
+			pkg.Platforms = []string{}
+		}
+		for _, l := range v.Meta.Licenses {
+			pkg.Licenses = append(pkg.Licenses, License{
+				FullName: l.FullName,
+				Free:     l.Free,
+				SpdxID:   l.SpdxID,
+			})
+		}
+		for _, m := range v.Meta.Maintainers {
+			pkg.Maintainers = append(pkg.Maintainers, Maintainer{
+				Name:     m.Name,
+				Email:    m.Email,
+				GitHub:   m.GitHub,
+				GithubId: m.GithubId,
+			})
+		}
+		packages[k] = simplifyPlatform(pkg)
+	}
+	log.Println("Parsed " + file + " successfully")
+	return packages
+}
+
+func dlNur() Packages {
+	file := "nur.json"
+	log.Println("Downloading " + file + "...")
+	jsonObject := nur.Nur{}
+	err := downloadAndReadRelease(file, &jsonObject)
+	if err != nil {
+		log.Println(err)
+	}
+	log.Println("Downloaded " + file + " successfully")
+	log.Println("Parsing " + file + "...")
+	packages := Packages{}
+	for k, v := range jsonObject.Packages {
+		pkg := Package{
+			Source:          "nur",
+			Name:            v.Meta.Name,
+			Version:         v.Version,
+			Description:     v.Meta.Description,
+			LongDescription: v.Meta.LongDescription,
+			MainProgram:     v.Meta.MainProgram,
+			Licenses:        []License{},
+			Maintainers:     []Maintainer{},
+			Broken:          v.Meta.Broken,
+			Unfree:          v.Meta.Unfree,
+			Position:        v.Meta.Position,
+			PositionUrl:     v.Meta.Position,
+		}
+		if v.Meta.KnownVulnerabilities != nil {
+			pkg.KnownVulnerabilities = v.Meta.KnownVulnerabilities
+		} else {
+			pkg.KnownVulnerabilities = []string{}
+		}
+		if v.Meta.Homepages != nil {
+			pkg.Homepages = v.Meta.Homepages
+		} else {
+			pkg.Homepages = []string{}
+		}
+		if v.Meta.Platforms != nil {
+			pkg.Platforms = v.Meta.Platforms
+		} else {
+			pkg.Platforms = []string{}
+		}
+		for _, l := range v.Meta.Licenses {
+			pkg.Licenses = append(pkg.Licenses, License{
+				FullName: l.FullName,
+				Free:     l.Free,
+				SpdxID:   l.SpdxID,
+			})
+		}
+		for _, m := range v.Meta.Maintainers {
+			pkg.Maintainers = append(pkg.Maintainers, Maintainer{
+				Name:     m.Name,
+				Email:    m.Email,
+				GitHub:   m.GitHub,
+				GithubId: m.GithubId,
+			})
+		}
+		packages[k] = simplifyPlatform(pkg)
+	}
+	log.Println("Parsed " + file + " successfully")
+	return packages
 }
 
 func DownloadReleases(path string) {
 	log.Println("Downloading releases...")
 	index := Index{}
 
-	log.Println("Downloading nixos.json...")
-	err := downloadAndReadRelease("nixos.json", &index.Nixos)
-	if err != nil {
-		log.Println(err)
-	}
+	index.Darwin = dlDarwin()
+	index.Nixpkgs = dlNixpkgs()
+	index.Nur = dlNur()
+	index.Nixos = dlNixos()
+	index.Homemanager = dlHomemanager()
 
-	log.Println("Downloading nixpkgs.json...")
-	nixpkgsJson := nixpkgs.Nixpkgs{}
-	err = downloadAndReadRelease("nixpkgs.json", &nixpkgsJson)
-	if err != nil {
-		log.Println(err)
-	}
-	index.Nixpkgs = nixpkgsJson.Packages
-
-	log.Println("Downloading homemanager.json...")
-	err = downloadAndReadRelease("home-manager.json", &index.Homemanager)
-	if err != nil {
-		log.Println(err)
-	}
-
-	log.Println("Downloading darwin.json...")
-	darwinJson := darwin.Darwin{}
-	err = downloadAndReadRelease("darwin.json", &darwinJson)
-	if err != nil {
-		log.Println(err)
-	}
-	index.Darwin = darwinJson.Packages
-
-	log.Println("Downloading nur.json...")
-	nurJson := nur.Nur{}
-	err = downloadAndReadRelease("nur.json", &nurJson)
-	if err != nil {
-		log.Println(err)
-	}
-	index.Nur = nurJson.Packages
-
-	log.Println("Downloading info")
+	log.Println("Downloading version")
 	rc, err := downloadRelease("version")
 	if err != nil {
 		log.Println(err)
@@ -97,54 +271,13 @@ func DownloadReleases(path string) {
 
 	log.Println("Writing index.json...")
 	index.Info = map[string]string{
-		"version":        string(content),
-		"last-updated":   time.Now().Format(time.RFC3339),
-		"nixos-length":   strconv.Itoa(len(index.Nixos)),
-		"nixpkgs-length": strconv.Itoa(len(index.Nixpkgs)),
-		"hm-length":      strconv.Itoa(len(index.Homemanager)),
-		"darwin-length":  strconv.Itoa(len(index.Darwin)),
-		"nur-length":     strconv.Itoa(len(index.Nur)),
-	}
-
-	index.Keys = []Key{}
-	for key := range index.Nixos {
-		index.Keys = append(index.Keys, Key{
-			Key:         key,
-			Name:        nixos.Prefix + key,
-			Description: index.Nixos[key].Description,
-		})
-	}
-
-	for key := range index.Nixpkgs {
-		index.Keys = append(index.Keys, Key{
-			Key:         key,
-			Name:        nixpkgs.Prefix + key,
-			Description: index.Nixpkgs[key].Meta.Description,
-		})
-	}
-
-	for key := range index.Homemanager {
-		index.Keys = append(index.Keys, Key{
-			Key:         key,
-			Name:        homemanager.Prefix + key,
-			Description: index.Homemanager[key].Description,
-		})
-	}
-
-	for key := range index.Darwin {
-		index.Keys = append(index.Keys, Key{
-			Key:         key,
-			Name:        darwin.Prefix + key,
-			Description: index.Darwin[key].Description,
-		})
-	}
-
-	for key := range index.Nur {
-		index.Keys = append(index.Keys, Key{
-			Key:         key,
-			Name:        nur.Prefix + key,
-			Description: index.Nur[key].Meta.Description,
-		})
+		"version":            string(content),
+		"last-updated":       time.Now().Format(time.RFC3339),
+		"nixos-length":       strconv.Itoa(len(index.Nixos)),
+		"nixpkgs-length":     strconv.Itoa(len(index.Nixpkgs)),
+		"nur-length":         strconv.Itoa(len(index.Nur)),
+		"darwin-length":      strconv.Itoa(len(index.Darwin)),
+		"homemanager-length": strconv.Itoa(len(index.Homemanager)),
 	}
 
 	indexFile, err := os.Create(path)
@@ -164,14 +297,8 @@ func DownloadReleases(path string) {
 		return
 	}
 	log.Println("Index downloaded and saved to", path)
-	log.Println("Version:", index.Info["version"])
+	log.Println("Info:", index.Info)
 	log.Println("Index file size:", len(content), "bytes")
-	log.Println("Nixpkgs version:", index.Info["version"])
-	log.Println("Nixpkgs length:", len(nixpkgsJson.Packages))
-	log.Println("Nixos length:", index.Info["nixos-length"])
-	log.Println("Homemanager length:", index.Info["hm-length"])
-	log.Println("Darwin length:", index.Info["darwin-length"])
-	log.Println("Nur length:", index.Info["nur-length"])
 }
 
 func GetIndex(path string) (index Index) {
@@ -179,6 +306,7 @@ func GetIndex(path string) (index Index) {
 		DownloadReleases(path)
 	}
 
+	log.Println("Opening index.json...")
 	indexFile, err := os.Open(path)
 	if err != nil {
 		log.Println(err)
@@ -190,11 +318,13 @@ func GetIndex(path string) (index Index) {
 		log.Println(err)
 		return
 	}
+	log.Println("Parsing index.json...")
 	err = json.Unmarshal(content, &index)
 	if err != nil {
 		log.Println(err)
 		return
 	}
 
+	log.Println("Index opened successfully")
 	return index
 }

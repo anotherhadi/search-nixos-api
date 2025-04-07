@@ -20,17 +20,19 @@ type Package struct {
 }
 
 type Meta struct {
-	Description     string               `json:"description"`
-	LongDescription string               `json:"longDescription"`
-	MainProgram     string               `json:"mainProgram"`
-	Homepages       ElemOrSlice[string]  `json:"homepage"`
-	Licenses        ElemOrSlice[License] `json:"license"`
-	Maintainers     Maintainers          `json:"maintainers"`
-	Broken          bool                 `json:"broken"`
-	Unfree          bool                 `json:"unfree"`
-	Name            string               `json:"name"`
-	Position        string               `json:"position"`
-	Platforms       FlexibleStringSlice  `json:"platforms"`
+	Description          string               `json:"description"`
+	LongDescription      string               `json:"longDescription"`
+	MainProgram          string               `json:"mainProgram"`
+	Homepages            ElemOrSlice[string]  `json:"homepage"`
+	Licenses             ElemOrSlice[License] `json:"license"`
+	Maintainers          Maintainers          `json:"maintainers"`
+	Broken               bool                 `json:"broken"`
+	Unfree               bool                 `json:"unfree"`
+	Insecure             bool                 `json:"insecure"`
+	Name                 string               `json:"name"`
+	Position             string               `json:"position"`
+	Platforms            FlexibleStringSlice  `json:"platforms"`
+	KnownVulnerabilities []string             `json:"knownVulnerabilities"`
 }
 
 type (

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -80,10 +81,13 @@ func main() {
 		c.JSON(200, index.Info)
 	})
 
-	// Search endpoint
-	// curl -X GET "http://localhost:8080/search?q=kitty&exclude=nixos,homemanager"
 	r.GET("/search", func(c *gin.Context) {
 		query := c.Query("q")
+		if query == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Le paramètre de requête 'q' est requis"})
+			return
+		}
+
 		page := c.Query("page")
 		if page == "" {
 			page = "1"
@@ -96,6 +100,7 @@ func main() {
 			c.JSON(400, gin.H{"error": "Page number must be greater than 0"})
 			return
 		}
+
 		perPage := c.Query("per_page")
 		if perPage == "" {
 			perPage = "20"
@@ -109,35 +114,47 @@ func main() {
 			return
 		}
 
-		excludeStr := c.Query("exclude")
-		exclude := []string{}
-		if excludeStr != "" {
-			exclude = strings.Split(excludeStr, ",")
-		}
-		if query == "" {
-			c.JSON(400, gin.H{"error": "Query parameter 'q' is required"})
-		} else {
-			results := index.Keys.Search(query, exclude)
-			if len(results) == 0 {
-				c.JSON(200, gin.H{"results": indexer.Keys{}, "total": 0, "page": pageInt, "per_page": perPageInt, "totalPages": 1})
-				return
-			}
-			total := len(results)
-			totalPages := (total + perPageInt - 1) / perPageInt
-			if pageInt > totalPages {
-				c.JSON(400, gin.H{"error": "Page number exceeds total pages"})
-				return
-			}
+		results := index.Search(query)
 
-			if total > perPageInt {
-				start := (pageInt - 1) * perPageInt
-				end := start + perPageInt
-				end = min(end, total)
-
-				results = results[start:end]
-			}
-			c.JSON(200, gin.H{"results": results, "total": total, "totalPages": totalPages, "page": pageInt, "per_page": perPageInt})
+		if len(results) == 0 {
+			c.JSON(
+				200,
+				gin.H{
+					"results":    []indexer.PackageOrOption{},
+					"total":      0,
+					"page":       pageInt,
+					"per_page":   perPageInt,
+					"totalPages": 1,
+				},
+			)
+			return
 		}
+
+		total := len(results)
+		totalPages := (total + perPageInt - 1) / perPageInt
+		if pageInt > totalPages {
+			c.JSON(400, gin.H{"error": "Page number exceeds total pages"})
+			return
+		}
+
+		if total > perPageInt {
+			start := (pageInt - 1) * perPageInt
+			end := start + perPageInt
+			end = min(end, total)
+
+			results = results[start:end]
+		}
+
+		c.JSON(
+			200,
+			gin.H{
+				"results":    results,
+				"total":      total,
+				"totalPages": totalPages,
+				"page":       pageInt,
+				"per_page":   perPageInt,
+			},
+		)
 	})
 
 	r.GET(nixpkgs.Prefix+":q", func(c *gin.Context) {

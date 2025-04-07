@@ -1,80 +1,169 @@
 package indexer
 
 import (
-	"fmt"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
-
-	"github.com/anotherhadi/search-nixos-api/indexer/darwin"
-	"github.com/anotherhadi/search-nixos-api/indexer/homemanager"
-	"github.com/anotherhadi/search-nixos-api/indexer/nixos"
-	"github.com/anotherhadi/search-nixos-api/indexer/nixpkgs"
-	"github.com/anotherhadi/search-nixos-api/indexer/nur"
 )
 
-func DeleteNonMatchingItems(keys Keys, pattern string, onlyOnKey bool) Keys {
-	re, err := regexp.Compile(pattern)
-	if err != nil {
-		fmt.Println("Err: ", err)
-		return keys
-	}
+// PackageOrOption represents a package or option result.
+type PackageOrOption struct {
+	Type        string // "package" or "option"
+	Source      string
+	Key         string
+	Description string
 
-	var filtered Keys
-	if onlyOnKey {
-		for _, k := range keys {
-			if re.MatchString(k.Key) {
-				filtered = append(filtered, k)
-			}
-		}
-	} else {
-		for _, k := range keys {
-			if re.MatchString(k.Name) {
-				filtered = append(filtered, k)
-			}
-		}
-	}
-	return filtered
+	Broken   bool
+	Insecure bool
 }
 
-func (keys Keys) Search(
-	query string,
-	exclude []string,
-) (results Keys) {
+// packageRemoveNotMatching filters packages based on a regex pattern.
+// If onlyOnKey is true, the regex is matched only against the key.
+func packageRemoveNotMatching(i Packages, pattern string, onlyOnKey bool) Packages {
+	res := Packages{}
+
+	// Special search for maintainer
+	if strings.HasPrefix(pattern, "maintainer=") {
+		pattern = strings.TrimPrefix(pattern, "maintainer=")
+		for key, pkg := range i {
+			for _, maintainer := range pkg.Maintainers {
+				if strings.EqualFold(maintainer.GitHub, pattern) {
+					res[key] = pkg
+					break
+				}
+			}
+		}
+		return res
+	}
+
+	re, err := regexp.Compile("(?i)" + pattern)
+	if err != nil {
+		return i
+	}
+	if onlyOnKey {
+		for key, pkg := range i {
+			if re.MatchString(key) {
+				res[key] = pkg
+			}
+		}
+	} else {
+		for key, pkg := range i {
+			// Combining source, literal " package " and key for matching
+			if re.MatchString(pkg.Source + " package " + key) {
+				res[key] = pkg
+			}
+		}
+	}
+	return res
+}
+
+// optionRemoveNotMatching filters options based on a regex pattern.
+// If onlyOnKey is true, the regex is matched only against the key.
+func optionRemoveNotMatching(i Options, pattern string, onlyOnKey bool) Options {
+	res := Options{}
+	re, err := regexp.Compile("(?i)" + pattern)
+	if err != nil {
+		return i
+	}
+	if onlyOnKey {
+		for key, opt := range i {
+			if re.MatchString(key) {
+				res[key] = opt
+			}
+		}
+	} else {
+		for key, opt := range i {
+			// Combining source, literal " option " and key for matching
+			if re.MatchString(opt.Source + " option " + key) {
+				res[key] = opt
+			}
+		}
+	}
+	return res
+}
+
+// removeNotMaching filters the entire index for both packages and options.
+func removeNotMaching(i Index, regex string, onlyOnKey bool) Index {
+	i.Nixpkgs = packageRemoveNotMatching(i.Nixpkgs, regex, onlyOnKey)
+	i.Nur = packageRemoveNotMatching(i.Nur, regex, onlyOnKey)
+	i.Nixos = optionRemoveNotMatching(i.Nixos, regex, onlyOnKey)
+	i.Homemanager = optionRemoveNotMatching(i.Homemanager, regex, onlyOnKey)
+	i.Darwin = optionRemoveNotMatching(i.Darwin, regex, onlyOnKey)
+	return i
+}
+
+// stripPrefix removes a possible prefix (e.g. "services." or "programs.") from the key.
+func stripPrefix(key string) string {
+	key = strings.TrimPrefix(key, "services.")
+	key = strings.TrimPrefix(key, "programs.")
+	key = strings.TrimSuffix(key, ".enable")
+	key = strings.TrimSuffix(key, ".settings")
+	return key
+}
+
+// Search performs a search on the index based on the provided query and exclude list.
+// It returns a sorted slice of PackageOrOption results.
+func (index Index) Search(query string) []PackageOrOption {
 	query = strings.TrimSpace(query)
 	if query == "" {
-		return keys
+		return nil
 	}
 
-	results = slices.Clone(keys)
-
-	var patterns []string
-	if !slices.Contains(exclude, "nixpkgs") {
-		patterns = append(patterns, `^`+nixpkgs.Prefix+`.*`)
-	}
-	if !slices.Contains(exclude, "nixos") {
-		patterns = append(patterns, `^`+nixos.Prefix+`.*`)
-	}
-	if !slices.Contains(exclude, "homemanager") {
-		patterns = append(patterns, `^`+homemanager.Prefix+`.*`)
-	}
-	if !slices.Contains(exclude, "darwin") {
-		patterns = append(patterns, `^`+darwin.Prefix+`.*`)
-	}
-	if !slices.Contains(exclude, "nur") {
-		patterns = append(patterns, `^`+nur.Prefix+`.*`)
-	}
-	if len(patterns) > 0 {
-		pattern := strings.Join(patterns, "|")
-		results = DeleteNonMatchingItems(results, pattern, false)
-	} else {
-		return Keys{}
+	// Create a copy of the index.
+	results := Index{
+		Nixos:       index.Nixos,
+		Nixpkgs:     index.Nixpkgs,
+		Nur:         index.Nur,
+		Homemanager: index.Homemanager,
+		Darwin:      index.Darwin,
 	}
 
-	for _, term := range strings.Fields(query) {
-		regex := `(?i)`
+	fields := strings.Fields(query)
+
+	// Exclude sections if specified.
+	if slices.Contains(fields, "!nixos") {
+		results.Nixos = Options{}
+		fields = slices.Delete(
+			fields,
+			slices.Index(fields, "!nixos"),
+			slices.Index(fields, "!nixos")+1,
+		)
+	}
+	if slices.Contains(fields, "!nixpkgs") {
+		results.Nixpkgs = Packages{}
+		fields = slices.Delete(
+			fields,
+			slices.Index(fields, "!nixpkgs"),
+			slices.Index(fields, "!nixpkgs")+1,
+		)
+	}
+	if slices.Contains(fields, "!nur") {
+		results.Nur = Packages{}
+		fields = slices.Delete(fields, slices.Index(fields, "!nur"), slices.Index(fields, "!nur")+1)
+	}
+	if slices.Contains(fields, "!homemanager") {
+		results.Homemanager = Options{}
+		fields = slices.Delete(
+			fields,
+			slices.Index(fields, "!homemanager"),
+			slices.Index(fields, "!homemanager")+1,
+		)
+	}
+	if slices.Contains(fields, "!darwin") {
+		results.Darwin = Options{}
+		fields = slices.Delete(
+			fields,
+			slices.Index(fields, "!darwin"),
+			slices.Index(fields, "!darwin")+1,
+		)
+	}
+
+	// Process each search term (using Fields to handle spaces efficiently).
+	for _, term := range fields {
+		regex := ""
 		onlyOnKey := false
-		endWith := ``
+		endWith := ""
 		if strings.HasPrefix(term, "^") {
 			term = strings.TrimPrefix(term, "^")
 			regex += "^"
@@ -85,23 +174,76 @@ func (keys Keys) Search(
 			endWith = "$"
 			onlyOnKey = true
 		}
-		regex += regexp.QuoteMeta(term)
-		regex += endWith
-		results = DeleteNonMatchingItems(results, regex, onlyOnKey)
+		regex += regexp.QuoteMeta(term) + endWith
+		results = removeNotMaching(results, regex, onlyOnKey)
 	}
 
-	slices.SortFunc(results, func(a, b Key) int {
-		a.Key = strings.TrimPrefix(a.Key, "services.")
-		b.Key = strings.TrimPrefix(b.Key, "services.")
-		a.Key = strings.TrimPrefix(a.Key, "programs.")
-		b.Key = strings.TrimPrefix(b.Key, "programs.")
-		if len(a.Key) < len(b.Key) {
-			return -1
-		} else if len(a.Key) > len(b.Key) {
-			return 1
-		}
-		return 0
+	// Combine packages and options into a single slice.
+	var items []PackageOrOption
+	for key, opt := range results.Nixos {
+		items = append(
+			items,
+			PackageOrOption{
+				Type:        "option",
+				Source:      opt.Source,
+				Key:         key,
+				Description: opt.Description,
+			},
+		)
+	}
+	for key, opt := range results.Homemanager {
+		items = append(
+			items,
+			PackageOrOption{
+				Type:        "option",
+				Source:      opt.Source,
+				Key:         key,
+				Description: opt.Description,
+			},
+		)
+	}
+	for key, opt := range results.Darwin {
+		items = append(
+			items,
+			PackageOrOption{
+				Type:        "option",
+				Source:      opt.Source,
+				Key:         key,
+				Description: opt.Description,
+			},
+		)
+	}
+	for key, pkg := range results.Nixpkgs {
+		items = append(
+			items,
+			PackageOrOption{
+				Type:        "package",
+				Source:      pkg.Source,
+				Key:         key,
+				Description: pkg.Description,
+				Broken:      pkg.Broken,
+				Insecure:    pkg.Insecure,
+			},
+		)
+	}
+	for key, pkg := range results.Nur {
+		items = append(
+			items,
+			PackageOrOption{
+				Type:        "package",
+				Source:      pkg.Source,
+				Key:         key,
+				Description: pkg.Description,
+				Broken:      pkg.Broken,
+				Insecure:    pkg.Insecure,
+			},
+		)
+	}
+
+	// Naive sorting by the length of the key after stripping the prefix.
+	sort.Slice(items, func(i, j int) bool {
+		return len(stripPrefix(items[i].Key)) < len(stripPrefix(items[j].Key))
 	})
 
-	return
+	return items
 }

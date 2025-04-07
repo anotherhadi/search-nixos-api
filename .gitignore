@@ -3,3 +3,4 @@
 index.json
 .direnv
 .DS_Store
+tmp/
