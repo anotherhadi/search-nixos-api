@@ -35,6 +35,14 @@ func packageRemoveNotMatching(i Packages, pattern string, onlyOnKey bool) Packag
 			}
 		}
 		return res
+	} else if strings.HasPrefix(pattern, "broken=true") {
+		pattern = strings.TrimPrefix(pattern, "broken=true")
+		for key, pkg := range i {
+			if pkg.Broken {
+				res[key] = pkg
+			}
+		}
+		return res
 	}
 
 	re, err := regexp.Compile("(?i)" + pattern)
