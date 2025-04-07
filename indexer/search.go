@@ -110,16 +110,33 @@ func (index Index) Search(query string) []PackageOrOption {
 		return nil
 	}
 
-	// Create a copy of the index.
-	results := Index{
-		Nixos:       index.Nixos,
-		Nixpkgs:     index.Nixpkgs,
-		Nur:         index.Nur,
-		Homemanager: index.Homemanager,
-		Darwin:      index.Darwin,
-	}
+	results := Index{}
 
 	fields := strings.Fields(query)
+
+	if len(fields) == 0 {
+		return []PackageOrOption{}
+	}
+
+	if fields[0] == "package" {
+		results.Nixpkgs = index.Nixpkgs
+		results.Nur = index.Nur
+		results.Nixos = Options{}
+		results.Homemanager = Options{}
+		results.Darwin = Options{}
+	} else if fields[0] == "option" {
+		results.Nixpkgs = Packages{}
+		results.Nur = Packages{}
+		results.Nixos = index.Nixos
+		results.Homemanager = index.Homemanager
+		results.Darwin = index.Darwin
+	} else {
+		results.Nixpkgs = index.Nixpkgs
+		results.Nur = index.Nur
+		results.Nixos = index.Nixos
+		results.Homemanager = index.Homemanager
+		results.Darwin = index.Darwin
+	}
 
 	// Exclude sections if specified.
 	if slices.Contains(fields, "!nixos") {
