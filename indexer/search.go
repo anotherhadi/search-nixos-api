@@ -163,8 +163,8 @@ func (index Index) Search(query string) []PackageOrOption {
 		results.Homemanager = Options{}
 		fields = slices.Delete(
 			fields,
-			slices.Index(fields, "!homemanager"),
-			slices.Index(fields, "!homemanager")+1,
+			slices.Index(fields, "!home-manager"),
+			slices.Index(fields, "!home-manager")+1,
 		)
 	}
 	if slices.Contains(fields, "!darwin") {
