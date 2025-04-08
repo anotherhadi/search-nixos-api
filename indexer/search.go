@@ -14,8 +14,9 @@ type PackageOrOption struct {
 	Key         string
 	Description string
 
-	Broken   bool
-	Insecure bool
+	Broken     bool
+	Insecure   bool
+	Vulnerable bool
 }
 
 // packageRemoveNotMatching filters packages based on a regex pattern.
@@ -247,6 +248,7 @@ func (index Index) Search(query string) []PackageOrOption {
 				Description: pkg.Description,
 				Broken:      pkg.Broken,
 				Insecure:    pkg.Insecure,
+				Vulnerable:  pkg.Vulnerable,
 			},
 		)
 	}
@@ -260,6 +262,7 @@ func (index Index) Search(query string) []PackageOrOption {
 				Description: pkg.Description,
 				Broken:      pkg.Broken,
 				Insecure:    pkg.Insecure,
+				Vulnerable:  pkg.Vulnerable,
 			},
 		)
 	}
