@@ -24,8 +24,8 @@ func packageRemoveNotMatching(i Packages, pattern string, onlyOnKey bool) Packag
 	res := Packages{}
 
 	// Special search for maintainer
-	if strings.HasPrefix(pattern, "?maintainer=") {
-		pattern = strings.TrimPrefix(pattern, "?maintainer=")
+	if strings.HasPrefix(pattern, "\\?maintainer=") {
+		pattern = strings.TrimPrefix(pattern, "\\?maintainer=")
 		for key, pkg := range i {
 			for _, maintainer := range pkg.Maintainers {
 				if strings.EqualFold(maintainer.GitHub, pattern) {
@@ -35,7 +35,7 @@ func packageRemoveNotMatching(i Packages, pattern string, onlyOnKey bool) Packag
 			}
 		}
 		return res
-	} else if strings.HasPrefix(pattern, "?broken") {
+	} else if strings.HasPrefix(pattern, "\\?broken") {
 		for key, pkg := range i {
 			if pkg.Broken {
 				res[key] = pkg
