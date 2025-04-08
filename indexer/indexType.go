@@ -29,7 +29,8 @@ type Package struct {
 	Position          string       `json:"position"`
 	PositionUrl       string       `json:"positionUrl"`
 
-	Broken bool `json:"broken"`
+	Broken     bool `json:"broken"`
+	Vulnerable bool `json:"vulnerable"`
 
 	Licenses []License `json:"licenses"`
 	Unfree   bool      `json:"unfree"`

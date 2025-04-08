@@ -150,6 +150,7 @@ func dlNixpkgs() Packages {
 		)
 		if v.Meta.KnownVulnerabilities != nil {
 			pkg.KnownVulnerabilities = v.Meta.KnownVulnerabilities
+			pkg.Vulnerable = true
 		} else {
 			pkg.KnownVulnerabilities = []string{}
 		}
@@ -212,6 +213,7 @@ func dlNur() Packages {
 		}
 		if v.Meta.KnownVulnerabilities != nil {
 			pkg.KnownVulnerabilities = v.Meta.KnownVulnerabilities
+			pkg.Vulnerable = true
 		} else {
 			pkg.KnownVulnerabilities = []string{}
 		}
