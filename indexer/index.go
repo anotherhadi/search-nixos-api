@@ -50,9 +50,15 @@ func dlNixos() Options {
 			Source:       "nixpkgs",
 			Type:         v.Type,
 			Description:  v.Description,
-			Declarations: v.Declarations,
+			Declarations: []string{},
 			Default:      v.Default.Text,
 			Example:      v.Example.Text,
+		}
+		for _, d := range v.Declarations {
+			opt.Declarations = append(
+				opt.Declarations,
+				"https://github.com/NixOS/nixpkgs/blob/nixos-unstable/"+d,
+			)
 		}
 		options[k] = opt
 	}
