@@ -134,18 +134,19 @@ func dlNixpkgs() Packages {
 	packages := Packages{}
 	for k, v := range jsonObject.Packages {
 		pkg := Package{
-			Source:          "nixpkgs",
-			Name:            v.Meta.Name,
-			Version:         v.Version,
-			Description:     v.Meta.Description,
-			LongDescription: v.Meta.LongDescription,
-			MainProgram:     v.Meta.MainProgram,
-			Licenses:        []License{},
-			Maintainers:     []Maintainer{},
-			Broken:          v.Meta.Broken,
-			Unfree:          v.Meta.Unfree,
-			Position:        v.Meta.Position,
-			PositionUrl:     v.Meta.Position,
+			Source:               "nixpkgs",
+			Name:                 v.Meta.Name,
+			Version:              v.Version,
+			Description:          v.Meta.Description,
+			LongDescription:      v.Meta.LongDescription,
+			MainProgram:          v.Meta.MainProgram,
+			Licenses:             []License{},
+			Maintainers:          []Maintainer{},
+			KnownVulnerabilities: []string{},
+			Broken:               v.Meta.Broken,
+			Unfree:               v.Meta.Unfree,
+			Position:             v.Meta.Position,
+			PositionUrl:          v.Meta.Position,
 		}
 
 		pkg.PositionUrl = "https://github.com/NixOS/nixpkgs/blob/nixos-unstable/" + strings.Replace(
@@ -204,20 +205,21 @@ func dlNur() Packages {
 	packages := Packages{}
 	for k, v := range jsonObject.Packages {
 		pkg := Package{
-			Source:          "nur",
-			Name:            v.Meta.Name,
-			Version:         v.Version,
-			Description:     v.Meta.Description,
-			LongDescription: v.Meta.LongDescription,
-			MainProgram:     v.Meta.MainProgram,
-			Licenses:        []License{},
-			Maintainers:     []Maintainer{},
-			Broken:          v.Meta.Broken,
-			Unfree:          v.Meta.Unfree,
-			Position:        v.Meta.Position,
-			PositionUrl:     v.Meta.Position,
+			Source:               "nur",
+			Name:                 v.Meta.Name,
+			Version:              v.Version,
+			Description:          v.Meta.Description,
+			LongDescription:      v.Meta.LongDescription,
+			MainProgram:          v.Meta.MainProgram,
+			Licenses:             []License{},
+			Maintainers:          []Maintainer{},
+			KnownVulnerabilities: []string{},
+			Broken:               v.Meta.Broken,
+			Unfree:               v.Meta.Unfree,
+			Position:             v.Meta.Position,
+			PositionUrl:          v.Meta.Position,
 		}
-		if v.Meta.KnownVulnerabilities != nil {
+		if v.Meta.KnownVulnerabilities != nil && len(v.Meta.KnownVulnerabilities) != 0 {
 			pkg.KnownVulnerabilities = v.Meta.KnownVulnerabilities
 			pkg.Vulnerable = true
 		} else {
