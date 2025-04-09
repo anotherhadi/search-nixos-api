@@ -276,7 +276,12 @@ func (index Index) Search(query string) []PackageOrOption {
 
 	// Naive sorting by the length of the key after stripping the prefix.
 	sort.Slice(items, func(i, j int) bool {
-		return len(stripPrefix(items[i].Key)) < len(stripPrefix(items[j].Key))
+		keyI := stripPrefix(items[i].Key)
+		keyJ := stripPrefix(items[j].Key)
+		if len(keyI) == len(keyJ) {
+			return items[i].Key < items[j].Key
+		}
+		return len(keyI) < len(keyJ)
 	})
 
 	return items
