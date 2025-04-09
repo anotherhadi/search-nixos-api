@@ -72,6 +72,7 @@ func main() {
 			"Content-Type",
 			"Cache-Control",
 			"Expires",
+			"Pragma",
 		},
 	}))
 
