@@ -154,7 +154,7 @@ func dlNixpkgs() Packages {
 			"#L",
 			1,
 		)
-		if v.Meta.KnownVulnerabilities != nil {
+		if v.Meta.KnownVulnerabilities != nil && len(v.Meta.KnownVulnerabilities) != 0 {
 			pkg.KnownVulnerabilities = v.Meta.KnownVulnerabilities
 			pkg.Vulnerable = true
 		} else {
