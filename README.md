@@ -16,7 +16,7 @@ This API is used in the [Search NixOS](https://github.com/anotherhadi/search-nix
 
 ## Hosted Public Instance
 
-A publicly accessible instance of the Nix Options Search API is hosted at [search-nixos-api.hadi.diy](https://search-nixos-api.hadi.diy). Users can utilize this endpoint to programmatically search for options without the need to set up their own instance.
+<del>A publicly accessible instance of the Nix Options Search API is hosted at [search-nixos-api.hadi.diy](https://search-nixos-api.hadi.diy). Users can utilize this endpoint to programmatically search for options without the need to set up their own instance. (Now down)</del>
 
 ## Data Source
 
